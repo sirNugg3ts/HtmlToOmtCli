@@ -9,6 +9,7 @@
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <RootNamespace>sirNugg3ts.HtmlToOmtCli</RootNamespace>
     <AssemblyName>sirNugg3ts.HtmlToOmtCli</AssemblyName>
+    <Version>1.0.0</Version>
   </PropertyGroup>
 
   <ItemGroup>

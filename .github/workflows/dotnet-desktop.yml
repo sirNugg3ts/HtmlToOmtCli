@@ -1,9 +1,7 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:
 
 jobs:
   release:
@@ -18,6 +16,12 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
+      - name: Read version
+        id: version
+        run: |
+          $version = ([xml](Get-Content HtmlToOmtCli.csproj)).Project.PropertyGroup.Version
+          echo "value=v$version" >> $env:GITHUB_OUTPUT
+
       - name: Publish
         run: dotnet publish -c Release -r win-x64 --self-contained true -o publish
 
@@ -27,6 +31,8 @@ jobs:
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.version.outputs.value }}
+          name: ${{ steps.version.outputs.value }}
           files: HtmlToOmtCli-win-x64.zip
           body: |
             ## Requirements
@@ -34,5 +40,5 @@ jobs:
 
             ## Usage
             ```
-            HtmlToOmtCli <url> <source-name> [width] [height] [fps]
+            HtmlToOmtCli <url> [source-name] [width] [height] [fps]
             ```
