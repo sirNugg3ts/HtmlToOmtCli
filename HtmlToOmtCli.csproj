@@ -3,15 +3,16 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
-    <UseWPF>true</UseWPF>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <Platforms>x64</Platforms>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <RootNamespace>sirNugg3ts.HtmlToOmtCli</RootNamespace>
+    <AssemblyName>sirNugg3ts.HtmlToOmtCli</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\HtmlToOmt\HtmlToOmt.csproj" />
+    <PackageReference Include="sirNugg3ts.HtmlToOmt" Version="1.0.0" />
   </ItemGroup>
 
 </Project>

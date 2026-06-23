@@ -1,30 +1,29 @@
-using System.Windows;
-using CefSharp;
-using CefSharp.OffScreen;
-using HtmlToOmt.Contracts;
-using HtmlToOmt.Services;
+using sirNugg3ts.HtmlToOmt.Contracts;
+using sirNugg3ts.HtmlToOmt.Services;
 
-if (args.Length < 4)
+if (args.Length < 1)
 {
-    Console.Error.WriteLine("Usage: HtmlToOmtCli <url> <source-name> <width> <height> [fps]");
+    Console.Error.WriteLine("Usage: HtmlToOmtCli <url> [source-name] [width] [height] [fps]");
     Console.Error.WriteLine("  url          URL to render");
-    Console.Error.WriteLine("  source-name  OMT source name");
-    Console.Error.WriteLine("  width        Frame width in pixels");
-    Console.Error.WriteLine("  height       Frame height in pixels");
+    Console.Error.WriteLine("  source-name  OMT source name (default: url)");
+    Console.Error.WriteLine("  width        Frame width in pixels (default: 1920)");
+    Console.Error.WriteLine("  height       Frame height in pixels (default: 1080)");
     Console.Error.WriteLine("  fps          Frames per second (default: 30)");
     return 1;
 }
 
 var url = args[0];
-var sourceName = args[1];
+var sourceName = args.Length >= 2 ? args[1] : url;
 
-if (!int.TryParse(args[2], out var width) || width <= 0)
+var width = 1920;
+if (args.Length >= 3 && (!int.TryParse(args[2], out width) || width <= 0))
 {
     Console.Error.WriteLine($"Invalid width: {args[2]}");
     return 1;
 }
 
-if (!int.TryParse(args[3], out var height) || height <= 0)
+var height = 1080;
+if (args.Length >= 4 && (!int.TryParse(args[3], out height) || height <= 0))
 {
     Console.Error.WriteLine($"Invalid height: {args[3]}");
     return 1;
@@ -37,64 +36,51 @@ if (args.Length >= 5 && (!int.TryParse(args[4], out fps) || fps <= 0))
     return 1;
 }
 
-var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
-
-var cefSettings = new CefSettings
-{
-    WindowlessRenderingEnabled = true,
-    LogSeverity = LogSeverity.Warning,
-};
-CefSharpSettings.SubprocessExitIfParentProcessClosed = true;
-Cef.Initialize(cefSettings);
-
-var cts = new CancellationTokenSource();
-Console.CancelKeyPress += (_, e) =>
-{
-    e.Cancel = true;
-    cts.Cancel();
-};
-
-Console.WriteLine($"Starting: {url} -> OMT source '{sourceName}' at {width}x{height} {fps}fps");
-
-using var omtOutput = new OmtOutputService(sourceName, width, height, fps);
-
-var renderOptions = new HtmlRenderHostOptions
-{
-    InitialUrl = url,
-    Width = width,
-    Height = height,
-};
-
-using var renderHost = new HtmlRenderHost(renderOptions);
-
-renderHost.Diagnostic += (_, msg) => Console.WriteLine($"[diag] {msg}");
-renderHost.FatalLoadError += (_, msg) =>
-{
-    Console.Error.WriteLine($"[error] {msg}");
-    cts.Cancel();
-};
-renderHost.FrameReady += (_, frame) =>
-{
-    try
-    {
-        omtOutput.SendFrame(frame);
-    }
-    catch (Exception ex)
-    {
-        Console.Error.WriteLine($"[error] SendFrame failed: {ex.Message}");
-    }
-};
-
-await renderHost.StartAsync();
-
 try
 {
-    await Task.Delay(Timeout.Infinite, cts.Token);
-}
-catch (OperationCanceledException) { }
+    var cts = new CancellationTokenSource();
+    Console.CancelKeyPress += (_, e) =>
+    {
+        e.Cancel = true;
+        cts.Cancel();
+    };
 
-Console.WriteLine("Shutting down.");
-Cef.Shutdown();
-app.Shutdown();
+    Console.WriteLine($"Starting: {url} -> OMT source '{sourceName}' at {width}x{height} {fps}fps");
+
+    var renderOptions = new HtmlRenderHostOptions
+    {
+        InitialUrl = url,
+        Width = width,
+        Height = height,
+        OmtSourceName = sourceName,
+        Fps = fps,
+        CefCommandLineArgs = ["disable-web-security"]
+    };
+
+    var renderHost = new HtmlRenderHost(renderOptions);
+
+    renderHost.Diagnostic += (_, msg) => Console.WriteLine($"[diag] {msg}");
+    renderHost.FatalLoadError += (_, msg) =>
+    {
+        Console.Error.WriteLine($"[error] {msg}");
+        cts.Cancel();
+    };
+
+    await renderHost.StartAsync();
+
+    try
+    {
+        await Task.Delay(Timeout.Infinite, cts.Token);
+    }
+    catch (OperationCanceledException) { }
+
+    Console.WriteLine("Shutting down.");
+    HtmlRenderHost.Shutdown();
+}
+catch (Exception ex)
+{
+    Console.Error.WriteLine($"[fatal] {ex}");
+    return 1;
+}
 
 return 0;
